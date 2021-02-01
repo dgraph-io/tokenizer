@@ -29,29 +29,11 @@ func NewTokenizer(enc bpe.Encoder) *Tokenizer {
 	}
 }
 
-type tmp struct {
-	P bpe.Pair
-}
-
 func (t *Tokenizer) Tokenize(a string) ([]string, error) {
 	pairs := bpe.Pairs(a, bpe.WithReuse(t.pairbuf))
 	if len(pairs) == 0 {
 		return []string{a}, nil
 	}
-
-	// var b bytes.Buffer
-	// for i := range t.enc.Pairs {
-	// 	fmt.Fprintf(&b, "%v:%d\n", t.enc.Pairs[i], i)
-	// }
-	// fmt.Fprintf(&b, "\n\nDICT\n")
-	// for i := 0; i < t.enc.Corpus.Size(); i++ {
-	// 	word, _ := t.enc.Corpus.Word(i)
-	// 	freq := t.enc.Corpus.IDFreq(i)
-	// 	word = t.Untokenize([]string{word})
-	// 	fmt.Fprintf(&b, "%d - %q:%d\n", i, word, freq)
-
-	// }
-	// ioutil.WriteFile("tmp", b.Bytes(), 0644)
 
 	w := []rune(a)
 	newWord := make([]rune, 0, len(w)) // newWord is a buffer for working. It would at most be the same length as `w`
@@ -64,8 +46,8 @@ func (t *Tokenizer) Tokenize(a string) ([]string, error) {
 		snd := bigram.Snd()
 
 		for i := 0; i < len(w); {
-			j, err := index(w, i, fst)
-			if err != nil {
+			j, ok := index(w, i, fst)
+			if !ok {
 				newWord = append(newWord, w[i:]...)
 				break
 			} else {
@@ -151,14 +133,14 @@ func (t *Tokenizer) minRank(ps []bpe.Pair) (min bpe.Pair, ok bool) {
 
 // UTIL
 
-func index(rs []rune, start int, of rune) (int, error) {
+func index(rs []rune, start int, of rune) (int, bool) {
 	if start >= len(rs) {
-		return -1, errors.Errorf("start:%d < len(rs):%d", start, len(rs))
+		return -1, false
 	}
 	for i, r := range rs[start:] {
 		if r == of {
-			return i + start, nil
+			return i + start, true
 		}
 	}
-	return -1, errors.Errorf("Not Found")
+	return -1, false
 }
