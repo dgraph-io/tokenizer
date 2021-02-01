@@ -30,7 +30,7 @@ func NewTokenizer(enc bpe.Encoder) *Tokenizer {
 }
 
 func (t *Tokenizer) Tokenize(a string) ([]string, error) {
-	pairs := bpe.Pairs(a, bpe.WithReuse(t.pairbuf))
+	pairs := bpe.PairsWithReuse(a, t.pairbuf)
 	if len(pairs) == 0 {
 		return []string{a}, nil
 	}
@@ -73,22 +73,22 @@ func (t *Tokenizer) Tokenize(a string) ([]string, error) {
 		if len(w) == 1 {
 			break
 		}
-		pairs = bpe.PairsRunes(w, bpe.WithReuse(t.pairbuf))
+		pairs = bpe.PairsRunesWithReuse(w, t.pairbuf)
 	}
 
-	buf := make([]rune, 0, 8) // 8 words is more than enough for a token
+	newWord = newWord[:0] // reuse the buffer
 	var tokens []string
 	for _, r := range w {
-		buf = t.untokenize(r, buf)
-		if len(buf) == 0 {
+		newWord = t.untokenize(r, newWord)
+		if len(newWord) == 0 {
 			continue
 		}
-		s := string(buf)
+		s := string(newWord)
 		if s == " " {
 			continue
 		}
 		tokens = append(tokens, s)
-		buf = buf[:0]
+		newWord = newWord[:0]
 	}
 	return tokens, nil
 }

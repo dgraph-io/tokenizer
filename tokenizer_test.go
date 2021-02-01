@@ -1,7 +1,6 @@
 package tokenizer
 
 import (
-	"log"
 	"os"
 	"sort"
 	"strings"
@@ -17,6 +16,16 @@ import (
 	"github.com/go-nlp/corpus"
 	"github.com/stretchr/testify/require"
 )
+
+var tokz *Tokenizer
+
+func init() {
+	var err error
+	tokz, err = testingTokenizer()
+	if err != nil {
+		panic(err)
+	}
+}
 
 func testingTokenizer() (*Tokenizer, error) {
 	f, err := os.Open("testdata/corpus_zh.txt")
@@ -38,7 +47,6 @@ func testingTokenizer() (*Tokenizer, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("corpus %d", c.Size())
 	g, err := os.Open("testdata/corpus_en.txt")
 	if err != nil {
 		return nil, err
@@ -60,8 +68,7 @@ func testingTokenizer() (*Tokenizer, error) {
 }
 
 func TestTokenizer(t *testing.T) {
-	tok, err := testingTokenizer()
-	require.NoError(t, err)
+	tok := tokz
 	input := "我现在在吃rabbit soup"
 	tokens, err := tok.Tokenize(input)
 	require.NoError(t, err)
@@ -128,24 +135,6 @@ func BenchmarkBleve(b *testing.B) {
 func BenchmarkTokenizer(b *testing.B) {
 	b.StopTimer()
 	// set up
-	f, err := os.Open("testdata/corpus_zh.txt")
-	if err != nil {
-		b.Fatal(err)
-	}
-	normalizer := func(a string) string {
-		return strings.Replace(a, " ", "", -1)
-	}
-
-	c, err := corpus.FromTextCorpus(f, nil, normalizer)
-	if err != nil {
-		b.Fatal(err)
-	}
-	enc, err := bpe.Learn(c, 6000, 3, false)
-	if err != nil {
-		b.Fatal(err)
-	}
-	tokz := NewTokenizer(enc)
-
 	b.ResetTimer()
 	b.StartTimer()
 	var tokens []string
