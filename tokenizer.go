@@ -6,10 +6,13 @@ import (
 )
 
 type Tokenizer struct {
-	ranks   map[bpe.Pair]int
-	enc     bpe.Encoder
-	lut     map[rune]bpe.Pair
+	ranks map[bpe.Pair]int
+	enc   bpe.Encoder
+	lut   map[rune]bpe.Pair
+
+	// buffers
 	pairbuf []bpe.Pair
+	wordbuf []rune
 }
 
 func NewTokenizer(enc bpe.Encoder) *Tokenizer {
@@ -26,17 +29,19 @@ func NewTokenizer(enc bpe.Encoder) *Tokenizer {
 		enc:     enc,
 		lut:     lut,
 		pairbuf: make([]bpe.Pair, 0, 256),
+		wordbuf: make([]rune, 0, 512),
 	}
 }
 
 func (t *Tokenizer) Tokenize(a string) ([]string, error) {
+	t.wordbuf = t.wordbuf[:0]
 	pairs := bpe.PairsWithReuse(a, t.pairbuf)
 	if len(pairs) == 0 {
 		return []string{a}, nil
 	}
 
 	w := []rune(a)
-	newWord := make([]rune, 0, len(w)) // newWord is a buffer for working. It would at most be the same length as `w`
+	newWord := t.wordbuf
 	for {
 		bigram, ok := t.minRank(pairs)
 		if !ok {
@@ -77,7 +82,7 @@ func (t *Tokenizer) Tokenize(a string) ([]string, error) {
 	}
 
 	newWord = newWord[:0] // reuse the buffer
-	var tokens []string
+	var tokens []string   // don't preallocate this. it's faster to let Go handle appends than pre-empting at this point
 	for _, r := range w {
 		newWord = t.untokenize(r, newWord)
 		if len(newWord) == 0 {
